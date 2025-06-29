@@ -1,0 +1,220 @@
+import React, { useState, useEffect } from 'react';
+
+import '../styles/AdminProductForm.css';
+
+
+
+const AdminProductForm = ({ product, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    price: '',
+    description: '',
+    category: 'phones',
+    images: [],
+    brand: '',
+    model: '',
+    color: ''
+  });
+
+  const [newImage, setNewImage] = useState('');
+
+  // Initialize form if editing existing product
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        name: product.name,
+        price: product.price.toString(),
+        description: product.description,
+        category: product.category,
+        images: [...product.images],
+        brand: product.brand || '',
+        model: product.model || '',
+        color: product.color || ''
+      });
+    }
+  }, [product]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddImage = () => {
+    if (newImage.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, newImage.trim()]
+      }));
+      setNewImage('');
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    const productData = {
+      ...formData,
+      price: parseFloat(formData.price),
+      // images is already an array, no need to split
+      brand: formData.brand || undefined,
+      model: formData.model || undefined,
+      color: formData.color || undefined
+    };
+    
+    onSave(productData);
+  };
+
+  return (
+    <div className="admin-form-overlay">
+      <div className="admin-form">
+        <div className="form-header">
+          <h3>{product ? 'Edit Product' : 'Add New Product'}</h3>
+          <button onClick={onClose} className="close-btn">&times;</button>
+        </div>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="name">Product Name*</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="price">Price*</label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              min="0"
+              step="0.01"
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="category">Category*</label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              required
+            >
+              <option value="phones">Phones</option>
+              <option value="laptops">Laptops</option>
+              <option value="consoles">Consoles</option>
+              <option value="accessories">Accessories</option>
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="brand">Brand</label>
+            <input
+              type="text"
+              id="brand"
+              name="brand"
+              value={formData.brand}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="model">Model</label>
+            <input
+              type="text"
+              id="model"
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="color">Color</label>
+            <input
+              type="text"
+              id="color"
+              name="color"
+              value={formData.color}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="description">Description*</label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              required
+            ></textarea>
+          </div>
+          
+          <div className="form-group">
+            <label>Images*</label>
+            <div className="image-input-group">
+              <input
+                type="text"
+                value={newImage}
+                onChange={(e) => setNewImage(e.target.value)}
+                placeholder="Enter image URL"
+              />
+              <button 
+                type="button" 
+                onClick={handleAddImage}
+                className="btn btn-outline"
+              >
+                Add Image
+              </button>
+            </div>
+            
+            <div className="image-preview">
+              {formData.images.map((img, index) => (
+                <div key={index} className="image-preview-item">
+                  <img src={img} alt={`Preview ${index}`} />
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="remove-image-btn"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="form-actions">
+            <button type="button" onClick={onClose} className="btn btn-outline">
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {product ? 'Update Product' : 'Add Product'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default AdminProductForm;

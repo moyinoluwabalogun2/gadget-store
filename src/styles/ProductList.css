@@ -1,0 +1,44 @@
+.product-list {
+  padding: 3rem 0;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.category-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.category-filter label {
+  font-weight: 500;
+}
+
+.category-filter select {
+  padding: 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--gray-color);
+}
+
+.no-products {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: var(--gray-color);
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+  }
+  
+  .category-filter {
+    justify-content: space-between;
+  }
+}
