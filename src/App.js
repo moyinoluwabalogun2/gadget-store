@@ -1,3 +1,4 @@
+// App.js
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AdminProvider } from './context/AdminContext';
@@ -11,10 +12,14 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
+import RequireAdmin from './components/RequireAdmin'; // ✅ NEW
+
 import './App.css';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
+    <AuthProvider>
     <AdminProvider>
       <CartProvider>
         <Router>
@@ -29,7 +34,16 @@ function App() {
                 <Route path="/receipt" element={<Receipt />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/admin" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+                {/* ✅ Protect Admin Dashboard */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <RequireAdmin>
+                      <AdminDashboard />
+                    </RequireAdmin>
+                  }
+                />
               </Routes>
             </main>
             <Footer />
@@ -37,6 +51,7 @@ function App() {
         </Router>
       </CartProvider>
     </AdminProvider>
+    </AuthProvider>
   );
 }
 

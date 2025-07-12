@@ -1,38 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAdmin } from '../context/AdminContext';
+import { useAuth } from '../context/AuthContext';
 import AdminProductForm from './AdminProductForm';
+import { db } from '../firebase-config';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import '../styles/AdminDashboard.css';
 
-
-
 const AdminDashboard = () => {
-  const { isAdmin, logout, products, addProduct, updateProduct, deleteProduct } = useAdmin();
+  const { currentUser, userData, logout, loading } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [products, setProducts] = useState([]);
   const navigate = useNavigate();
 
-  if (!isAdmin) {
-    navigate('/admin/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!loading && (!currentUser || userData?.role !== 'admin')) {
+      navigate('/admin');
+    }
+  }, [loading, currentUser, userData, navigate]);
 
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    setShowForm(true);
-  };
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'products'));
+        const productList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setProducts(productList);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      }
+    };
+
+    fetchProducts();
+  }, [showForm]);
 
   const handleFormClose = () => {
     setShowForm(false);
     setEditingProduct(null);
   };
 
-  const handleSaveProduct = (productData) => {
-    if (editingProduct) {
-      updateProduct(editingProduct.id, productData);
-    } else {
-      addProduct(productData);
+  const handleEdit = (product) => {
+    setEditingProduct(product);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (productId) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        await deleteDoc(doc(db, 'products', productId));
+        setProducts(prev => prev.filter(p => p.id !== productId));
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
     }
+  };
+
+  const handleSaveProduct = () => {
     handleFormClose();
   };
 
@@ -41,16 +66,14 @@ const AdminDashboard = () => {
       <div className="admin-header">
         <div className="container">
           <h2>Admin Dashboard</h2>
-          <button onClick={logout} className="btn btn-outline">
-            Logout
-          </button>
+          <button onClick={logout} className="btn btn-outline">Logout</button>
         </div>
       </div>
-      
+
       <div className="admin-content">
         <div className="container">
           <div className="admin-actions">
-            <button 
+            <button
               onClick={() => {
                 setEditingProduct(null);
                 setShowForm(true);
@@ -59,7 +82,7 @@ const AdminDashboard = () => {
             >
               Add New Product
             </button>
-            
+
             <div className="stats">
               <div className="stat-card">
                 <h3>{products.length}</h3>
@@ -67,15 +90,15 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
-          
+
           {showForm && (
-            <AdminProductForm 
-              product={editingProduct} 
+            <AdminProductForm
+              product={editingProduct}
               onClose={handleFormClose}
-              onSave={handleSaveProduct} 
+              onSave={handleSaveProduct}
             />
           )}
-          
+
           <div className="products-table">
             <table>
               <thead>
@@ -88,25 +111,15 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {products.map(product => (
+                {products.map((product) => (
                   <tr key={product.id}>
                     <td>{product.id}</td>
                     <td>{product.name}</td>
                     <td>#{product.price.toFixed(2)}</td>
                     <td>{product.category}</td>
                     <td className="actions">
-                      <button 
-                        onClick={() => handleEdit(product)}
-                        className="btn btn-outline"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => deleteProduct(product.id)}
-                        className="btn btn-danger"
-                      >
-                        Delete
-                      </button>
+                      <button onClick={() => handleEdit(product)} className="btn btn-outline">Edit</button>
+                      <button onClick={() => handleDelete(product.id)} className="btn btn-danger">Delete</button>
                     </td>
                   </tr>
                 ))}

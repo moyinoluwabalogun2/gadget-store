@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase-config';
+import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 
-import '../styles/AdminProductForm.css';
-
-
-
-const AdminProductForm = ({ product, onClose, onSave }) => {
+const AdminProductForm = ({ product, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -17,16 +15,16 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
   });
 
   const [newImage, setNewImage] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  // Initialize form if editing existing product
   useEffect(() => {
     if (product) {
       setFormData({
-        name: product.name,
-        price: product.price.toString(),
-        description: product.description,
-        category: product.category,
-        images: [...product.images],
+        name: product.name || '',
+        price: product.price?.toString() || '',
+        description: product.description || '',
+        category: product.category || 'phones',
+        images: Array.isArray(product.images) ? product.images : [],
         brand: product.brand || '',
         model: product.model || '',
         color: product.color || ''
@@ -59,19 +57,45 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setSaving(true);
+
+    // Validate price and required fields
+    const parsedPrice = parseFloat(formData.price);
+    if (!formData.name || isNaN(parsedPrice) || !formData.description) {
+      alert("Please fill out all required fields with valid values.");
+      setSaving(false);
+      return;
+    }
+
     const productData = {
-      ...formData,
-      price: parseFloat(formData.price),
-      // images is already an array, no need to split
-      brand: formData.brand || undefined,
-      model: formData.model || undefined,
-      color: formData.color || undefined
+      name: formData.name,
+      price: parsedPrice,
+      description: formData.description,
+      category: formData.category,
+      images: Array.isArray(formData.images) ? formData.images.filter(Boolean) : [],
+      brand: formData.brand || '',
+      model: formData.model || '',
+      color: formData.color || ''
     };
-    
-    onSave(productData);
+
+    try {
+      if (product?.id) {
+        const productRef = doc(db, 'products', product.id);
+        await updateDoc(productRef, productData);
+        alert('✅ Product updated successfully!');
+      } else {
+        await addDoc(collection(db, 'products'), productData);
+        alert('✅ Product added successfully!');
+      }
+      onClose();
+    } catch (error) {
+      console.error('❌ Error saving product:', error);
+      alert('❌ Failed to save product. Check Firestore rules and console.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -81,8 +105,9 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
           <h3>{product ? 'Edit Product' : 'Add New Product'}</h3>
           <button onClick={onClose} className="close-btn">&times;</button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
+          {/* Name */}
           <div className="form-group">
             <label htmlFor="name">Product Name*</label>
             <input
@@ -94,7 +119,8 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               required
             />
           </div>
-          
+
+          {/* Price */}
           <div className="form-group">
             <label htmlFor="price">Price*</label>
             <input
@@ -108,7 +134,8 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               required
             />
           </div>
-          
+
+          {/* Category */}
           <div className="form-group">
             <label htmlFor="category">Category*</label>
             <select
@@ -124,7 +151,8 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               <option value="accessories">Accessories</option>
             </select>
           </div>
-          
+
+          {/* Optional Fields */}
           <div className="form-group">
             <label htmlFor="brand">Brand</label>
             <input
@@ -135,7 +163,7 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="model">Model</label>
             <input
@@ -146,7 +174,7 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="color">Color</label>
             <input
@@ -157,7 +185,8 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               onChange={handleChange}
             />
           </div>
-          
+
+          {/* Description */}
           <div className="form-group">
             <label htmlFor="description">Description*</label>
             <textarea
@@ -168,7 +197,8 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               required
             ></textarea>
           </div>
-          
+
+          {/* Image URLs */}
           <div className="form-group">
             <label>Images*</label>
             <div className="image-input-group">
@@ -178,20 +208,20 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
                 onChange={(e) => setNewImage(e.target.value)}
                 placeholder="Enter image URL"
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleAddImage}
                 className="btn btn-outline"
               >
                 Add Image
               </button>
             </div>
-            
+
             <div className="image-preview">
               {formData.images.map((img, index) => (
                 <div key={index} className="image-preview-item">
                   <img src={img} alt={`Preview ${index}`} />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => handleRemoveImage(index)}
                     className="remove-image-btn"
@@ -202,13 +232,14 @@ const AdminProductForm = ({ product, onClose, onSave }) => {
               ))}
             </div>
           </div>
-          
+
+          {/* Submit Buttons */}
           <div className="form-actions">
             <button type="button" onClick={onClose} className="btn btn-outline">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              {product ? 'Update Product' : 'Add Product'}
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
             </button>
           </div>
         </form>

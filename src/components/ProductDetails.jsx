@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAdmin } from '../context/AdminContext';
 import { useCart } from '../context/CartContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase-config';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper';
 import 'swiper/css';
@@ -12,10 +13,33 @@ import '../styles/ProductDetails.css';
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products } = useAdmin();
   const { addToCart } = useCart();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const product = products.find(p => p.id === parseInt(id));
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const docRef = doc(db, 'products', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setProduct({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          setProduct(null);
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return <p className="container">Loading product...</p>;
+  }
 
   if (!product) {
     return (
@@ -36,7 +60,6 @@ const ProductDetails = () => {
         </button>
 
         <div className="product-details-container">
-          {/* Image Gallery */}
           <div className="product-gallery">
             <Swiper
               modules={[Navigation, Pagination]}
@@ -45,7 +68,7 @@ const ProductDetails = () => {
               spaceBetween={20}
               slidesPerView={1}
             >
-              {product.images.map((image, index) => (
+              {product.images?.map((image, index) => (
                 <SwiperSlide key={index}>
                   <div className="product-image-container">
                     <img
@@ -63,10 +86,9 @@ const ProductDetails = () => {
             </Swiper>
           </div>
 
-          {/* Product Info */}
           <div className="product-info-section">
             <h1 className="product-title">{product.name}</h1>
-            
+
             <div className="price-section">
               <span className="current-price">#{product.price.toFixed(2)}</span>
               {product.originalPrice && (
@@ -85,17 +107,10 @@ const ProductDetails = () => {
             </div>
 
             <div className="product-actions">
-              <button 
-                onClick={() => addToCart(product)}
-                className="add-to-cart-btn"
-              >
+              <button onClick={() => addToCart(product)} className="add-to-cart-btn">
                 Add to Cart
               </button>
-              <Link 
-                to="/contact" 
-                state={{ product: product.name }}
-                className="contact-btn"
-              >
+              <Link to="/contact" state={{ product: product.name }} className="contact-btn">
                 Contact About This Product
               </Link>
             </div>
